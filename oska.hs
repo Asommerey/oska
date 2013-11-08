@@ -1,4 +1,4 @@
--- Alex Somerey c7r7
+-- Alex Somerey c7r7 72597099
 -- Ancelle Tache r3d8 35967116
 --Sample Board Representation for n = 4
 
@@ -15,25 +15,41 @@ oska_c7r7 board player moves = []
 
 --Static Board Evaluator
 --TODO
-board_eval_c7r7 :: [String]->Char->Int
+board_eval_c7r7 :: [(Int,Int,Char)]->Char->Int
 board_eval_c7r7 board 'w' = board_eval_wh_c7r7 board
 board_eval_c7r7 board 'b' = board_eval_bh_c7r7 board
 
 --Helper Function to Evaluate for White
---TODO
-board_eval_wh_c7r7 :: [String]->Int
-board_eval_wh_c7r7 board = 0
-
+board_eval_wh_c7r7 :: [(Int,Int,Char)]->Int
+board_eval_wh_c7r7 [] = 0
+board_eval_wh_c7r7 (x:xs) = (board_eval_wh2_c7r7 x) + (board_eval_wh_c7r7 xs)
+	
+board_eval_wh2_c7r7 :: (Int,Int,Char)->Int
+board_eval_wh2_c7r7 (_,y,c)
+	| c == 'w' = (y+1)
+	| otherwise = 0
+	
 --Helper Function to Evaluate for Black
---TODO
-board_eval_bh_c7r7 :: [String]->Int
-board_eval_bh_c7r7 board = 0
+board_eval_bh_c7r7 :: [(Int,Int,Char)]->Int
+board_eval_bh_c7r7 [] = 0
+board_eval_bh_c7r7 (x:xs)
+	| (not (null xs)) = (board_eval_bh2_c7r7 x (last xs)) + (board_eval_bh_c7r7 xs)
+	| otherwise = 0
+
+board_eval_bh2_c7r7 :: (Int,Int,Char)->(Int,Int,Char)->Int
+board_eval_bh2_c7r7 (_,y,c) (_,numRows,_)
+	| c == 'b' = (-1)*(numRows-y)
+	| otherwise = 0
 
 --Move Generator
 --TODO
 move_generator_c7r7 :: [(Int,Int,Char)]->Char->[[(Int,Int,Char)]]
 move_generator_c7r7 board 'w' = move_generator_wh_c7r7 [] board 
 move_generator_c7r7 board 'b' = move_generator_bh_c7r7 board
+
+--State shows the board, moveTree is the root of the tree
+--Need a function to change the lists into tree form
+data MoveTree = MoveTree { state :: [(Int,Int,Char)], moveTree :: [MoveTree] } deriving (Show)
 
 --Helper Function to Generate Moves for White
 move_generator_wh_c7r7 :: [(Int,Int,Char)]->[(Int,Int,Char)]->[[(Int,Int,Char)]]
@@ -119,9 +135,7 @@ row_size_c7r7 row numRows
 
 --Helper Function to Generate for Black
 move_generator_bh_c7r7 :: [(Int,Int,Char)]->[[(Int,Int,Char)]]
-move_generator_bh_c7r7 (x:xs) = generate_new_states_bh x xs  (x:xs) [[]]
---move_generator_bh_c7r7 before  (x:xs) board = (generate_new_states_b_r_c7r7 x before (xs) board) :
---										(move_generator_bh_c7r7 (before++(x:[])) xs board)
+move_generator_bh_c7r7 (x:xs) = filter (not . null) (generate_new_states_bh x xs  (x:xs) [[]])
 
 generate_new_states_bh :: (Int,Int,Char) -> [(Int,Int,Char)] ->[(Int,Int,Char)] -> [[(Int,Int,Char)]] -> [[(Int,Int,Char)]]
 generate_new_states_bh currentpiece	rest board moves
@@ -165,8 +179,8 @@ remove2 :: (Int,Int,Char) -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Cha
 remove2 piece1 piece2 before [] = before
 remove2 piece1 piece2 before (x:xs)	
 	| piece1 == x 	|| piece2 ==x 	= (before ++ xs)
-	| otherwise						= remove2 piece1 piece2 (x:before) xs
-	
+	| otherwise			= remove2 piece1 piece2 (x:before) xs
+
 
 in_bound :: (Int,Int) -> [(Int,Int,Char)] -> Bool
 in_bound point [(x,y,'Z')] 	= in_bound_helper point ((x-1),(y-1))

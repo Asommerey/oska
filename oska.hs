@@ -33,7 +33,7 @@ board_eval_bh_c7r7 board = 0
 --TODO
 move_generator_c7r7 :: [(Int,Int,Char)]->Char->[[(Int,Int,Char)]]
 move_generator_c7r7 board 'w' = move_generator_wh_c7r7 [] board 
-move_generator_c7r7 board 'b' = [[]]
+move_generator_c7r7 board 'b' = move_generator_bh_c7r7 board
 
 --Helper Function to Generate Moves for White
 move_generator_wh_c7r7 :: [(Int,Int,Char)]->[(Int,Int,Char)]->[[(Int,Int,Char)]]
@@ -118,27 +118,55 @@ row_size_c7r7 row numRows
 	| otherwise = row
 
 --Helper Function to Generate for Black
-move_generator_bh_c7r7 :: [(Int,Int,Char)]->[(Int,Int,Char)] ->[(Int,Int,Char)]->[[(Int,Int,Char)]]
-move_generator_bh_c7r7 before [] board = [[]]
-move_generator_bh_c7r7 before  (x:xs) board = (generate_new_states_b_r_c7r7 x before (xs) board) :
-										(move_generator_bh_c7r7 (before++(x:[])) xs board)
+move_generator_bh_c7r7 :: [(Int,Int,Char)]->[[(Int,Int,Char)]]
+move_generator_bh_c7r7 (x:xs) = generate_new_states_bh x xs  (x:xs) [[]]
+--move_generator_bh_c7r7 before  (x:xs) board = (generate_new_states_b_r_c7r7 x before (xs) board) :
+--										(move_generator_bh_c7r7 (before++(x:[])) xs board)
 
---Generates move to the right for black including jumps over white
-generate_new_states_b_r_c7r7 :: (Int,Int,Char) ->
-								[(Int,Int,Char)] ->
-								[(Int,Int,Char)] ->
-								[(Int,Int,Char)] ->
-								[(Int,Int,Char)]
-generate_new_states_b_r_c7r7 (x,0,char) bound after board = []
-generate_new_states_b_r_c7r7 (x,y,'w') bound after board = []
-generate_new_states_b_r_c7r7 (x,y,'b') before after board
-	| (in_bound (x, (y-1)) board) && open_space_c7r7 x (y-1) (before ++ after) 
-	= before++((x),(y-1),'b'):after
-	| (in_bound (x+1, (y-2)) board)  && (elem (x,(y-1),'w') (before++after))&&(open_space_c7r7 (x+1) (y-2) (before ++ after)) 
-	= before++((x+1),(y-2),'b'):after
-	| otherwise = [] 
+generate_new_states_bh :: (Int,Int,Char) -> [(Int,Int,Char)] ->[(Int,Int,Char)] -> [[(Int,Int,Char)]] -> [[(Int,Int,Char)]]
+generate_new_states_bh currentpiece	rest board moves
+	| null rest		= moves
+	| otherwise		= generate_new_states_bh (head rest) (tail rest) board ((generate_new_states_b_l currentpiece board):((generate_new_states_b_r currentpiece board) : moves))
 
+-- generates a move to the right for a piece if piece is black
+-- supports jumps over white
+generate_new_states_b_r :: (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
+generate_new_states_b_r (x,y,char) board
+	| y==0 || char == 'w'	= []
+	| (in_bound (x, (y-1)) board) && open_space_c7r7 x (y-1) board
+		= (x, y-1, char) : (remove1 (x,y,char) [] board)
+	| (in_bound ((x+1),(y-2)) board)  && (elem (x,(y-1),'w') board) && (open_space_c7r7 (x+1) (y-2) board)
+		= (x+1, (y-2), char) : (remove2 (x,y,char) (x,(y-1),'w') [] board)
+	| otherwise 			= []
+	
+-- generates a move to the left for a piece if piece is black
+-- supports jumps over white
+generate_new_states_b_l :: (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
+generate_new_states_b_l (x,y,char) board
+	| y == 0 || char == 'w'		= []
+	| (in_bound ((x-1), (y-1)) board) && open_space_c7r7 (x-1) (y-1) board
+		= ((x-1), (y-1), char) : (remove1 (x,y,char) [] board)
+	| (in_bound ((x-1),(y-2)) board)  && (elem ((x-1),(y-1),'w') board) && (open_space_c7r7 (x-1) (y-2) board)
+		= (x-1, (y-2), char) : (remove2 (x,y,char) ((x-1),(y-1),'w') [] board)
 		
+	|otherwise = []
+
+-- the input piece should always be in rest so rest should never reach [] option
+-- removes a piece from board
+remove1 :: (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)] ->[(Int,Int,Char)]
+remove1 piece	before [] = []
+remove1 piece before (x:xs)
+	| piece == x	= (before ++ xs)
+	| otherwise		= remove1 piece (x:before) xs
+
+-- this should always reach the empty list for rest
+-- by the time it reaches empty list, 2 pieces will have been removed 
+remove2 :: (Int,Int,Char) -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)] ->[(Int,Int,Char)]
+remove2 piece1 piece2 before [] = before
+pemove2 piece1 piece2 before (x:xs)	
+	| piece1 == x 	|| piece2 ==x 	= (before ++ xs)
+	| otherwise						= remove2 piece1 piece2 (x:before) xs
+	
 
 in_bound :: (Int,Int) -> [(Int,Int,Char)] -> Bool
 in_bound point [(x,y,'Z')] 	= in_bound_helper point (x,y)

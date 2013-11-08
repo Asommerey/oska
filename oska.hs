@@ -41,8 +41,32 @@ board_eval_bh2_c7r7 (_,y,c) (_,numRows,_)
 	| c == 'b' = (-1)*(numRows-y)
 	| otherwise = 0
 
+--Tests if White has won
+victory_w_c7r7 :: [(Int,Int,Char)]->Bool
+victory_w_c7r7 board = (victory_wh1_c7r7 board) || (victory_wh2_c7r7 board (last board))
+
+--Tests if all White pieces are in far end
+victory_wh2_c7r7 :: [(Int,Int,Char)]->(Int,Int,Char)->Bool
+victory_wh2_c7r7 [] boardInfo = True
+victory_wh2_c7r7 (x:xs) boardInfo = ((victory_wh2h_c7r7 x boardInfo) && (victory_wh2_c7r7 xs boardInfo))
+
+victory_wh2h_c7r7 :: (Int,Int,Char)->(Int,Int,Char)->Bool
+victory_wh2h_c7r7 (_,y,c) (_,numRows,_)
+	| (y /= (numRows-1)) && (c == 'w') = False
+	| otherwise = True
+
+--Tests if no Black pieces Remain
+victory_wh1_c7r7 :: [(Int,Int,Char)]->Bool
+victory_wh1_c7r7 [] = True
+victory_wh1_c7r7 (x:xs) = (victory_wh1h_c7r7 x) && (victory_wh1_c7r7 xs)
+
+victory_wh1h_c7r7 :: (Int,Int,Char)->Bool
+victory_wh1h_c7r7 (_,_,c)
+	| c == 'w' = True
+	| c == 'z' = True
+	| otherwise = False
+
 --Move Generator
---TODO
 move_generator_c7r7 :: [(Int,Int,Char)]->Char->[[(Int,Int,Char)]]
 move_generator_c7r7 board 'w' = move_generator_wh_c7r7 [] board 
 move_generator_c7r7 board 'b' = move_generator_bh_c7r7 board

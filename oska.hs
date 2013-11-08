@@ -1,3 +1,5 @@
+-- Alex Somerey c7r7
+-- Ancelle Tache r3d8 35967116
 --Sample Board Representation for n = 4
 
 --[00][10][20][30]
@@ -116,8 +118,48 @@ row_size_c7r7 row numRows
 	| otherwise = row
 
 --Helper Function to Generate for Black
-move_generator_bh_c7r7 :: [(Int,Int,Char)]->[[(Int,Int,Char)]]->[[(Int,Int,Char)]]
-move_generator_bh_c7r7 board [] = [[]]
+move_generator_bh_c7r7 :: [(Int,Int,Char)]->[(Int,Int,Char)] ->[(Int,Int,Char)]->[[(Int,Int,Char)]]
+move_generator_bh_c7r7 before [] board = [[]]
+move_generator_bh_c7r7 before  (x:xs) board = (generate_new_states_b_r_c7r7 x before (xs) board) :
+										(move_generator_bh_c7r7 (before++(x:[])) xs board)
+
+--Generates move to the right for black including jumps over white
+generate_new_states_b_r_c7r7 :: (Int,Int,Char) ->
+								[(Int,Int,Char)] ->
+								[(Int,Int,Char)] ->
+								[(Int,Int,Char)] ->
+								[(Int,Int,Char)]
+generate_new_states_b_r_c7r7 (x,0,char) bound after board = []
+generate_new_states_b_r_c7r7 (x,y,'w') bound after board = []
+generate_new_states_b_r_c7r7 (x,y,'b') before after board
+	| (in_bound (x, (y-1)) board) && open_space_c7r7 x (y-1) (before ++ after) 
+	= before++((x),(y-1),'b'):after
+	| (in_bound (x+1, (y-2)) board)  && (elem (x,(y-1),'w') (before++after))&&(open_space_c7r7 (x+1) (y-2) (before ++ after)) 
+	= before++((x+1),(y-2),'b'):after
+	| otherwise = [] 
+
+		
+
+in_bound :: (Int,Int) -> [(Int,Int,Char)] -> Bool
+in_bound point [(x,y,'Z')] 	= in_bound_helper point (x,y)
+in_bound point (x:xs) 		= in_bound point xs
+
+in_bound_helper :: (Int,Int) -> (Int,Int) -> Bool
+in_bound_helper  point (x,y) 
+	| x	== 2	= in_bound_helper2 (point) (x,y)
+	| otherwise = in_bound_helper1 (point) (x,y)
+
+in_bound_helper1 :: (Int,Int) -> (Int,Int) -> Bool
+in_bound_helper1 (x1,y1) (x2,y2)
+	|x1 < 0		= False
+	|y1== y2 	= x1 <= x2
+	|otherwise	= in_bound_helper (x1, y1) ((x2-1),(y2-1))
+	
+in_bound_helper2 :: (Int,Int) -> (Int,Int) -> Bool
+in_bound_helper2 (x1,y1) (x2,y2)
+	|y1 < 0		= False
+	|y1 == y2 	= x1 <= x2
+	|otherwise	= in_bound_helper2 (x1, y1) ((x2+1),(y2-1))
 
 --Parse Board into Tuples (x-cord,y-cord,char)
 --With the final Tuple being (Size of 1st Row, Number of Rows, Z)

@@ -169,23 +169,24 @@ pemove2 piece1 piece2 before (x:xs)
 	
 
 in_bound :: (Int,Int) -> [(Int,Int,Char)] -> Bool
-in_bound point [(x,y,'Z')] 	= in_bound_helper point (x,y)
+in_bound point [(x,y,'Z')] 	= in_bound_helper point ((x-1),(y-1))
 in_bound point (x:xs) 		= in_bound point xs
 
 in_bound_helper :: (Int,Int) -> (Int,Int) -> Bool
 in_bound_helper  point (x,y) 
-	| x	== 2	= in_bound_helper2 (point) (x,y)
+	| x	== 1	= in_bound_helper2 (point) (x,y)
 	| otherwise = in_bound_helper1 (point) (x,y)
 
 in_bound_helper1 :: (Int,Int) -> (Int,Int) -> Bool
 in_bound_helper1 (x1,y1) (x2,y2)
 	|x1 < 0		= False
+	|y1 < 0		= False
 	|y1== y2 	= x1 <= x2
 	|otherwise	= in_bound_helper (x1, y1) ((x2-1),(y2-1))
 	
 in_bound_helper2 :: (Int,Int) -> (Int,Int) -> Bool
 in_bound_helper2 (x1,y1) (x2,y2)
-	|y1 < 0		= False
+	|y2 < 0		= False
 	|y1 == y2 	= x1 <= x2
 	|otherwise	= in_bound_helper2 (x1, y1) ((x2+1),(y2-1))
 

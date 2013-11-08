@@ -163,7 +163,7 @@ remove1 piece before (x:xs)
 -- by the time it reaches empty list, 2 pieces will have been removed 
 remove2 :: (Int,Int,Char) -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)] ->[(Int,Int,Char)]
 remove2 piece1 piece2 before [] = before
-pemove2 piece1 piece2 before (x:xs)	
+remove2 piece1 piece2 before (x:xs)	
 	| piece1 == x 	|| piece2 ==x 	= (before ++ xs)
 	| otherwise						= remove2 piece1 piece2 (x:before) xs
 	

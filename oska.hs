@@ -14,15 +14,18 @@ oska_c7r7 board player moves = []
 
 
 --Static Board Evaluator
---TODO
 board_eval_c7r7 :: [(Int,Int,Char)]->Char->Int
-board_eval_c7r7 board 'w' = board_eval_wh_c7r7 board
-board_eval_c7r7 board 'b' = board_eval_bh_c7r7 board
+board_eval_c7r7 board 'w' 
+	| (victory_w_c7r7 board) = 1000
+	| otherwise = board_eval_wh_c7r7 board
+board_eval_c7r7 board 'b'
+	| (victory_b_c7r7 board) = (-1000) 
+	| otherwise = board_eval_bh_c7r7 board
 
 --Helper Function to Evaluate for White
 board_eval_wh_c7r7 :: [(Int,Int,Char)]->Int
 board_eval_wh_c7r7 [] = 0
-board_eval_wh_c7r7 (x:xs) = (board_eval_wh2_c7r7 x) + (board_eval_wh_c7r7 xs)
+board_eval_wh_c7r7 (x:xs)  = (board_eval_wh2_c7r7 x) + (board_eval_wh_c7r7 xs)
 	
 board_eval_wh2_c7r7 :: (Int,Int,Char)->Int
 board_eval_wh2_c7r7 (_,y,c)
@@ -41,11 +44,36 @@ board_eval_bh2_c7r7 (_,y,c) (_,numRows,_)
 	| c == 'b' = (-1)*(numRows-y)
 	| otherwise = 0
 
+--Tests if Black has won
+victory_b_c7r7 :: [(Int,Int,Char)]->Bool
+victory_b_c7r7 board = (victory_bh1_c7r7 board) || (victory_bh2_c7r7 board)
+
+--Tests if all Black pieces are in far end (Black Won)
+victory_bh2_c7r7 :: [(Int,Int,Char)]->Bool
+victory_bh2_c7r7 [] = True
+victory_bh2_c7r7 (x:xs) = ((victory_bh2h_c7r7 x) && (victory_bh2_c7r7 xs))
+
+victory_bh2h_c7r7 :: (Int,Int,Char)->Bool
+victory_bh2h_c7r7 (_,y,c)
+	| (y /= 0) && (c == 'b') = False
+	| otherwise = True
+
+--Tests if no White pieces Remain (Black Won)
+victory_bh1_c7r7 :: [(Int,Int,Char)]->Bool
+victory_bh1_c7r7 [] = True
+victory_bh1_c7r7 (x:xs) = (victory_bh1h_c7r7 x) && (victory_bh1_c7r7 xs)
+
+victory_bh1h_c7r7 :: (Int,Int,Char)->Bool
+victory_bh1h_c7r7 (_,_,c)
+	| c == 'b' = True
+	| c == 'z' = True
+	| otherwise = False
+
 --Tests if White has won
 victory_w_c7r7 :: [(Int,Int,Char)]->Bool
 victory_w_c7r7 board = (victory_wh1_c7r7 board) || (victory_wh2_c7r7 board (last board))
 
---Tests if all White pieces are in far end
+--Tests if all White pieces are in far end (White Won)
 victory_wh2_c7r7 :: [(Int,Int,Char)]->(Int,Int,Char)->Bool
 victory_wh2_c7r7 [] boardInfo = True
 victory_wh2_c7r7 (x:xs) boardInfo = ((victory_wh2h_c7r7 x boardInfo) && (victory_wh2_c7r7 xs boardInfo))
@@ -55,7 +83,7 @@ victory_wh2h_c7r7 (_,y,c) (_,numRows,_)
 	| (y /= (numRows-1)) && (c == 'w') = False
 	| otherwise = True
 
---Tests if no Black pieces Remain
+--Tests if no Black pieces Remain (White Won)
 victory_wh1_c7r7 :: [(Int,Int,Char)]->Bool
 victory_wh1_c7r7 [] = True
 victory_wh1_c7r7 (x:xs) = (victory_wh1h_c7r7 x) && (victory_wh1_c7r7 xs)

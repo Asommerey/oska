@@ -9,16 +9,20 @@
 --[04][14][24][34]
 --
 
-btest = ["wwww","---","--","---","bbbb"]
+wtest = ["wwww","---","--","---","bbbb"]
 btest1 =["-www","w--","--","---","bbbb"]
+wnomove = ["----","--b","--","---","w---"]
+bnomove = ["---b","---","--","-w-","w---"]
 
+-- Assumes that the player is the one who is moving
 oska_c7r7 :: [String]->Char->Int->[String]
-oska_c7r7 board player moves = get_1st_possible (move_generator_c7r7 (parse_c7r7 board) player)
+oska_c7r7 board player moves = get_1st_possible (move_generator_c7r7 (parse_c7r7 board) player) board
 
 -- TEMPORARY DUMB MOVE GENERATOR
 -- takes the first possible move and returns it
-get_1st_possible :: [[(Int,Int,Char)]] -> [String]
-get_1st_possible possibleboards = reparse (head possibleboards) 
+get_1st_possible :: [[(Int,Int,Char)]] -> [String] -> [String]
+get_1st_possible [] board = board
+get_1st_possible possibleboards board = reparse (head possibleboards) 
 
 --Static Board Evaluator
 board_eval_c7r7 :: [(Int,Int,Char)]->Char->Int

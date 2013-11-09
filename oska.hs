@@ -9,9 +9,16 @@
 --[04][14][24][34]
 --
 
-oska_c7r7 :: [String]->Char->Int->[String]
-oska_c7r7 board player moves = []
+btest = ["wwww","---","--","---","bbbb"]
+btest1 =["-www","w--","--","---","bbbb"]
 
+oska_c7r7 :: [String]->Char->Int->[String]
+oska_c7r7 board player moves = get_1st_possible (move_generator_c7r7 (parse_c7r7 board) player)
+
+-- TEMPORARY DUMB MOVE GENERATOR
+-- takes the first possible move and returns it
+get_1st_possible :: [[(Int,Int,Char)]] -> [String]
+get_1st_possible possibleboards = reparse (head possibleboards) 
 
 --Static Board Evaluator
 board_eval_c7r7 :: [(Int,Int,Char)]->Char->Int
@@ -202,76 +209,130 @@ row_size_c7r7 row numRows
 	| row < (div numRows 2) = numRows-(row+1)
 	| otherwise = row
 
+
 --Helper Function to Generate for Black
 move_generator_bh_c7r7 :: [(Int,Int,Char)]->[[(Int,Int,Char)]]
-move_generator_bh_c7r7 (x:xs) = filter (not . null) (generate_new_states_bh x xs  (x:xs) [[]])
+move_generator_bh_c7r7 (x:xs) = filter (not . null) (generate_new_states_bh [] x xs  (x:xs) [[]])
 
-generate_new_states_bh :: (Int,Int,Char) -> [(Int,Int,Char)] ->[(Int,Int,Char)] -> [[(Int,Int,Char)]] -> [[(Int,Int,Char)]]
-generate_new_states_bh currentpiece	rest board moves
-	| null rest		= moves
-	| otherwise		= generate_new_states_bh (head rest) (tail rest) board ((generate_new_states_b_l currentpiece board):((generate_new_states_b_r currentpiece board) : moves))
+generate_new_states_bh :: [(Int,Int,Char)] ->(Int,Int,Char) -> [(Int,Int,Char)] ->[(Int,Int,Char)] -> [[(Int,Int,Char)]] -> [[(Int,Int,Char)]]
+generate_new_states_bh passed currentpiece rest board moves
+        | null rest                = moves
+        | otherwise                = generate_new_states_bh (passed ++ [currentpiece]) (head rest) (tail rest) board 
+					((generate_new_states_b_l passed currentpiece rest):((generate_new_states_b_r passed currentpiece rest) : moves))
 
 -- generates a move to the right for a piece if piece is black
 -- supports jumps over white
-generate_new_states_b_r :: (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
-generate_new_states_b_r (x,y,char) board
-	| y==0 || char == 'w'	= []
-	| (in_bound (x, (y-1)) board) && open_space_c7r7 x (y-1) board
-		= (x, y-1, char) : (remove1 (x,y,char) [] board)
-	| (in_bound ((x+1),(y-2)) board)  && (elem (x,(y-1),'w') board) && (open_space_c7r7 (x+1) (y-2) board)
-		= (x+1, (y-2), char) : (remove2 (x,y,char) (x,(y-1),'w') [] board)
-	| otherwise 			= []
+generate_new_states_b_r ::  [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
+generate_new_states_b_r  passed (x,y,char) rest
+        | y==0 || char /= 'b'      			  = []
+		|below_middle_c7r7 (y+1) rest		= generate_b_r_below passed (x,y,char) rest
+        | otherwise                         = generate_b_r_above passed (x,y,char) rest
+		
+ -- Generates move for black below bottleneck
+generate_b_r_below :: [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
+generate_b_r_below passed (x,y,char) rest
+	| (in_bound (x,(y-1)) (last rest)) && (open_space_c7r7 x (y-1) passed)
+		= (passed ++ ((x,(y-1),char) : rest))
+	| otherwise		= jumpable_r passed (x,y,char) rest
+
+-- checks if black under bottleneck can jump and returns new board if it can		
+jumpable_r :: [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)]-> [(Int,Int,Char)]
+jumpable_r passed (x,y,char) rest
+	| y == get_y_after_bottleneck(last rest)
+		= jump_r_bottleneck passed (x,y,char) rest
+	| (in_bound (x, (y-2)) (last rest))&& (elem (x,(y-1),'w') passed) &&(open_space_c7r7 x (y-2) passed)
+		= ((remove1(x,(y-1),'w')[] passed) ++ ((x,(y-2),char) : rest))
+	| otherwise	= [] 
 	
+jump_r_bottleneck :: [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)]-> [(Int,Int,Char)]
+jump_r_bottleneck passed (x,y,char) rest
+	|(in_bound ((x+1), (y-2)) (last rest)) && (elem (x,(y-1),'w') passed)&&(open_space_c7r7 (x+1) (y-2) passed)
+		= ((remove1(x,(y-1),'w')[] passed) ++ ((x+1),(y-2),char) : rest)
+	|otherwise = []
+		
+-- Generates move for black above bottleneck
+generate_b_r_above :: [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
+generate_b_r_above passed (x,y,char) rest
+	 | (in_bound ((x+1), (y-1)) (last rest)) && (open_space_c7r7 (x+1) (y-1) passed)
+                = passed ++ ((x+1, y-1, char) : rest)
+	  | (in_bound ((x+2),(y-2)) (last rest))  && (elem (x+1,(y-1),'w') passed) && (open_space_c7r7 (x+2) (y-2) passed)
+                = ((remove1(x+1,(y-1),'w')[] passed) ++ ((x+2),(y-2),char) : rest)
+  			
+      | otherwise    = []
+	  
+	  
 -- generates a move to the left for a piece if piece is black
 -- supports jumps over white
-generate_new_states_b_l :: (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
-generate_new_states_b_l (x,y,char) board
-	| y == 0 || char == 'w'		= []
-	| (in_bound ((x-1), (y-1)) board) && open_space_c7r7 (x-1) (y-1) board
-		= ((x-1), (y-1), char) : (remove1 (x,y,char) [] board)
-	| (in_bound ((x-1),(y-2)) board)  && (elem ((x-1),(y-1),'w') board) && (open_space_c7r7 (x-1) (y-2) board)
-		= (x-1, (y-2), char) : (remove2 (x,y,char) ((x-1),(y-1),'w') [] board)
+generate_new_states_b_l ::  [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
+generate_new_states_b_l  passed (x,y,char) rest
+        | y==0 || char /= 'b'      			  = []
+		|below_middle_c7r7 (y+1) rest		= generate_b_l_below passed (x,y,char) rest
+        | otherwise                         = generate_b_l_above passed (x,y,char) rest
 		
+        
+generate_b_l_below :: [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
+generate_b_l_below passed (x,y,char) rest
+	| (in_bound ((x-1),(y-1)) (last rest)) && (open_space_c7r7 (x-1) (y-1) passed)
+		= (passed ++ (((x-1),(y-1),char) : rest))
+	| otherwise		= jumpable_l passed (x,y,char) rest
+	
+jumpable_l :: [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)]-> [(Int,Int,Char)]
+jumpable_l passed (x,y,char) rest
+	| y == get_y_after_bottleneck(last rest)
+		= jump_l_bottleneck passed (x,y,char) rest
+	| (in_bound ((x-2), (y-2)) (last rest))&& (elem (x-1,(y-1),'w') passed) &&(open_space_c7r7 (x-2) (y-2) passed)
+		= ((remove1(x-1,(y-1),'w')[] passed) ++ (((x-2),(y-2),char) : rest))
+	| otherwise	= [] 
+	
+jump_l_bottleneck :: [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)]-> [(Int,Int,Char)]
+jump_l_bottleneck passed (x,y,char) rest
+	|(in_bound ((x-1), (y-2)) (last rest)) && (elem ((x-1),(y-1),'w') passed)&&(open_space_c7r7 (x-1) (y-2) passed)
+		= ((remove1(x-1,(y-1),'w')[] passed) ++ ((x-1),(y-2),char) : rest)
 	|otherwise = []
-
+	
+generate_b_l_above :: [(Int,Int,Char)] -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)]
+generate_b_l_above passed (x,y,char) rest
+	 | (in_bound (x, (y-1)) (last rest)) && (open_space_c7r7 x (y-1) passed)
+                = passed ++ ((x, y-1, char) : rest)
+	  | (in_bound (x,(y-2)) (last rest))  && (elem (x,(y-1),'w') passed) && (open_space_c7r7 x (y-2) passed)
+                = ((remove1(x,(y-1),'w')[] passed) ++ ((x,(y-2),char) : rest))
+  			
+      | otherwise    = []
+	
+-- Returns the row numb right after smallest row
+get_y_after_bottleneck :: (Int,Int,Char) -> Int
+get_y_after_bottleneck(x,y,char)
+	= (x-1)
+	
 -- the input piece should always be in rest so rest should never reach [] option
 -- removes a piece from board
 remove1 :: (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)] ->[(Int,Int,Char)]
-remove1 piece	before [] = []
+remove1 piece        before [] = []
 remove1 piece before (x:xs)
-	| piece == x	= (before ++ xs)
-	| otherwise		= remove1 piece (x:before) xs
+        | piece == x        = (before ++ xs)
+        | otherwise                = remove1 piece (x:before) xs
 
--- this should always reach the empty list for rest
--- by the time it reaches empty list, 2 pieces will have been removed 
-remove2 :: (Int,Int,Char) -> (Int,Int,Char) -> [(Int,Int,Char)] -> [(Int,Int,Char)] ->[(Int,Int,Char)]
-remove2 piece1 piece2 before [] = before
-remove2 piece1 piece2 before (x:xs)	
-	| piece1 == x 	|| piece2 ==x 	= (before ++ xs)
-	| otherwise			= remove2 piece1 piece2 (x:before) xs
-
-
-in_bound :: (Int,Int) -> [(Int,Int,Char)] -> Bool
-in_bound point [(x,y,'Z')] 	= in_bound_helper point ((x-1),(y-1))
-in_bound point (x:xs) 		= in_bound point xs
+in_bound :: (Int,Int) -> (Int,Int,Char) -> Bool
+in_bound point (x,y,'Z')         = in_bound_helper point ((x-1),(y-1))
+in_bound point unavailable                = False
 
 in_bound_helper :: (Int,Int) -> (Int,Int) -> Bool
 in_bound_helper  point (x,y) 
-	| x	== 1	= in_bound_helper2 (point) (x,y)
-	| otherwise = in_bound_helper1 (point) (x,y)
+        | x        == 1        = in_bound_helper2 (point) (x,y)
+        | otherwise = in_bound_helper1 (point) (x,y)
 
 in_bound_helper1 :: (Int,Int) -> (Int,Int) -> Bool
 in_bound_helper1 (x1,y1) (x2,y2)
-	|x1 < 0		= False
-	|y1 < 0		= False
-	|y1== y2 	= x1 <= x2
-	|otherwise	= in_bound_helper (x1, y1) ((x2-1),(y2-1))
-	
+        |x1 < 0                = False
+        |y1 < 0                = False
+        |y1== y2         = x1 <= x2
+        |otherwise        = in_bound_helper (x1, y1) ((x2-1),(y2-1))
+        
 in_bound_helper2 :: (Int,Int) -> (Int,Int) -> Bool
 in_bound_helper2 (x1,y1) (x2,y2)
-	|y2 < 0		= False
-	|y1 == y2 	= x1 <= x2
-	|otherwise	= in_bound_helper2 (x1, y1) ((x2+1),(y2-1))
+        |y2 < 0                = False
+        |y1 == y2         = x1 <= x2
+        |otherwise        = in_bound_helper2 (x1, y1) ((x2+1),(y2-1))
 
 --Parse Board into Tuples (x-cord,y-cord,char)
 --With the final Tuple being (Size of 1st Row, Number of Rows, Z)
@@ -291,5 +352,37 @@ parse_column_h_c7r7 (l:ls) x y
 	| l /= '-' = (x,y,l):(parse_column_h_c7r7 ls (x+1) y)
 	| otherwise = parse_column_h_c7r7 ls (x+1) y
 
+-- Turns Tuples of board back into [String] Format
+reparse :: [(Int,Int,Char)] -> [String]
+reparse newboard 
+	= reparse_h0 newboard [] (get_bound (last newboard))
 
+
+reparse_h0 :: [(Int,Int,Char)] -> [String] -> (Int, Int) -> [String]
+reparse_h0 newboard list (x,y)	
+	| y < 0		= list
+	| otherwise	=  reparse_h1 newboard list (x,y)
+	
+reparse_h1 :: [(Int,Int,Char)] -> [String] -> (Int, Int) -> [String]
+reparse_h1  newboard list (x,y) 
+	| x == 1	= reparse_h2 newboard list (x,y) 
+	| otherwise = reparse_h1 newboard ((reparse_row newboard x y []) : list) (x-1, y-1)
+
+reparse_h2 :: [(Int,Int,Char)] -> [String] -> (Int, Int) -> [String]
+reparse_h2 newboard list (x,y) 
+	| y < 0		= list
+	| otherwise	=  reparse_h2 newboard ((reparse_row newboard x y []) : list) (x+1, y-1)
+
+	
+reparse_row :: [(Int,Int,Char)] -> Int-> Int -> String ->String
+reparse_row newboard x y row
+	| x <0		=row
+	| (elem (x, y, 'w') newboard) = reparse_row newboard (x-1) y ('w' : row)
+	| (elem (x, y, 'b') newboard) = reparse_row newboard (x-1) y ('b' : row)
+	| otherwise			= reparse_row newboard (x-1) y ('-' : row)
+
+
+get_bound :: (Int,Int,Char) -> (Int,Int)
+get_bound (x,y,'Z')	= (x-1, y-1)
+get_bound invalid 	= (-1,-1)
 

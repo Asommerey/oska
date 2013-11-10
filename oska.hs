@@ -9,8 +9,11 @@
 --[04][14][24][34]
 --
 
-wtest = ["wwww","---","--","---","bbbb"]
-btest1 =["-www","w--","--","---","bbbb"]
+wjtest = ["----","www","bb","---","----"]
+wjtest2 = ["----","www","bb","bbb","----"]
+wjtest3 = ["----","www","bb","b--","----"]
+wtest = ["----","---","ww","bbb","bbbb"]
+btest =["bbbb","---","--","---","----"]
 wnomove = ["----","--b","--","---","w---"]
 bnomove = ["---b","---","--","-w-","w---"]
 
@@ -161,7 +164,7 @@ move_generator_c7r7 board 'b' = move_generator_bh_c7r7 board
 move_generator_wh_c7r7 :: [(Int,Int,Char)]->[(Int,Int,Char)]->[[(Int,Int,Char)]]
 move_generator_wh_c7r7 piecesBefore [] = []
 move_generator_wh_c7r7 piecesBefore (x:xs) 
-	| null newMoves = [piecesBefore++(x:xs)]
+	| (null newMoves) && (not (null xs)) = [piecesBefore++(x:xs)]
 	| otherwise = newMoves
 		where newMoves = filter (not . null) 
 			(concat[
@@ -178,9 +181,10 @@ generate_new_states_wr_c7r7 :: (Int,Int,Char)->
 generate_new_states_wr_c7r7 (x,y,char) piecesBefore piecesAfter
 	| char == 'w' && (open_space_c7r7 x (y+1) (piecesBefore++piecesAfter))
 	= piecesBefore++(x,(y+1),'w'):piecesAfter
-	| char == 'w' && (open_space_c7r7 x (y+1) (piecesBefore++piecesAfter)) 
-	&& (jumpable_w_c7r7 x (y+1) (piecesBefore++piecesAfter))
-	= piecesBefore++((x+1),(y+2),'w'):piecesAfter
+	| (char == 'w') && (not (open_space_c7r7 x (y+1) (piecesBefore++piecesAfter)))
+	&& (jumpable_wr_c7r7 x (y+1) (piecesBefore++piecesAfter))
+	&& (open_space_c7r7 x (y+2) (piecesBefore++piecesAfter))
+	= remove1_c7r7 (x,(y+1),'b') [] (piecesBefore++(x,(y+2),'w'):piecesAfter)
 	| otherwise = []
 
 --Generates New Jumps down and to the left for white pieces
@@ -193,7 +197,7 @@ generate_new_states_wl_c7r7 (x,y,char) piecesBefore piecesAfter
 	&& (not (below_middle_c7r7 y piecesAfter))
 	= piecesBefore++((x-1),(y+1),'w'):piecesAfter
 	| char == 'w' && (open_space_c7r7 (x+1) (y+1) (piecesBefore++piecesAfter))
-	&& (below_middle_c7r7 y piecesAfter)
+	&& (below_middle_c7r7 y piecesAfter) 
 	= piecesBefore++((x+1),(y+1),'w'):piecesAfter
 	| otherwise = []
 
@@ -208,15 +212,15 @@ below_middle_h_c7r7 y (_,numRows,_)
 	| otherwise = True
 
 --Tests if a space can be jumped by a white piece
-jumpable_w_c7r7 :: Int->Int->[(Int,Int,Char)]->Bool
-jumpable_w_c7r7 newx newy [] = True
-jumpable_w_c7r7 newx newy (x:xs)
-	| xs /= [] = (jumpable_wh_c7r7 newx newy x (last xs)) &&
-			(jumpable_w_c7r7 newx newy xs)
+jumpable_wr_c7r7 :: Int->Int->[(Int,Int,Char)]->Bool
+jumpable_wr_c7r7 newx newy [] = True
+jumpable_wr_c7r7 newx newy (x:xs)
+	| xs /= [] = (jumpable_wrh_c7r7 newx newy x (last xs)) &&
+			(jumpable_wr_c7r7 newx newy xs)
 	| otherwise = True
 
-jumpable_wh_c7r7 :: Int->Int->(Int,Int,Char)->(Int,Int,Char)->Bool
-jumpable_wh_c7r7 newx newy (x,y,char) (_,_,_)
+jumpable_wrh_c7r7 :: Int->Int->(Int,Int,Char)->(Int,Int,Char)->Bool
+jumpable_wrh_c7r7 newx newy (x,y,char) (_,_,_)
 	| (newx == x) && (newy == y) && (char == 'w') = False
 	| otherwise = True 
 
@@ -231,6 +235,7 @@ open_space_c7r7 newx newy (x:xs)
 
 open_space_h_c7r7 :: Int->Int->(Int,Int,Char)->(Int,Int,Char)->Bool
 open_space_h_c7r7 newx newy (x,y,_) (_,numRows,_)
+	| (newx < 0) || (newy < 0) = False
 	| newy == numRows = False
 	| (newx == (row_size_c7r7 newy numRows)) = False
 	| (newx == x) && (newy == y) = False

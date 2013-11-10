@@ -127,10 +127,26 @@ move_generator_c7r7 :: [(Int,Int,Char)]->Char->[[(Int,Int,Char)]]
 move_generator_c7r7 board 'w' = move_generator_wh_c7r7 [] board 
 move_generator_c7r7 board 'b' = move_generator_bh_c7r7 board
 
---State shows the board, moveTree is the root of the tree
+--State shows the board, state is the root of the tree
 --Need a function to change the lists into tree form
 data MoveTree = MoveTree { state :: [(Int,Int,Char)], moveTree :: [MoveTree] } deriving (Show)
 
+make_move_tree :: [(Int,Int,Char)] -> Char -> Int -> MoveTree
+make_move_tree board player moves 
+	= (MoveTree board (move_tree_generator (move_generator_c7r7 board player) player (moves-1) []))
+	
+move_tree_generator :: [[(Int,Int,Char)]] -> Char -> Int -> [MoveTree] -> [MoveTree]
+move_tree_generator newstates player moves treearray
+	| null newstates		= treearray
+	| moves == 0			= move_tree_generator (tail newstates) player moves ((MoveTree (head newstates) []) : treearray)
+	| otherwise				= move_tree_generator (tail newstates) player moves ((MoveTree (head newstates) deeperstates) : treearray)
+		where deeperstates = (move_tree_generator (move_generator_c7r7 (head newstates) (getopp player)) (getopp player) (moves-1) [])
+
+getopp :: Char -> Char
+getopp player
+		|player == 'w' 	='b'
+		|otherwise 		= 'w'
+	
 --Helper Function to Generate Moves for White
 move_generator_wh_c7r7 :: [(Int,Int,Char)]->[(Int,Int,Char)]->[[(Int,Int,Char)]]
 move_generator_wh_c7r7 piecesBefore [] = []

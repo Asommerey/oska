@@ -16,8 +16,7 @@ bnomove = ["---b","---","--","-w-","w---"]
 
 -- Assumes that the player is the one who is moving
 oska_c7r7 :: [String]->Char->Int->[String]
-oska_c7r7 board player moves = get_1st_possible (move_generator_c7r7 (parse_c7r7 board) player) board
-
+oska_c7r7 board player moves = reparse (fst (evaluate_start_c7r7 (make_move_tree (parse_c7r7 board) player moves) player))
 -- TEMPORARY DUMB MOVE GENERATOR
 -- takes the first possible move and returns it
 get_1st_possible :: [[(Int,Int,Char)]] -> [String] -> [String]
@@ -146,6 +145,23 @@ getopp :: Char -> Char
 getopp player
 		|player == 'w' 	='b'
 		|otherwise 		= 'w'
+
+evaluate_start_c7r7 :: MoveTree->Char->([(Int,Int,Char)],Int)
+evaluate_start_c7r7 tree player
+	| player == 'w' = maximum (evaluate_tree_h_c7r7 (moveTree tree) player)
+	| player == 'b' = minimum (evaluate_tree_h_c7r7 (moveTree tree) player)
+
+evaluate_tree_c7r7 :: MoveTree->Char->([(Int,Int,Char)],Int)
+evaluate_tree_c7r7 tree player
+	| (null (moveTree tree)) = ((state tree),(board_eval_c7r7 (state tree) player))
+	| (player == 'w') = ((state tree),(snd (maximum leaves)))
+	| (player == 'b') = ((state tree),(snd (minimum leaves)))
+	where leaves = evaluate_tree_h_c7r7 (moveTree tree) (getopp player)
+
+evaluate_tree_h_c7r7 :: [MoveTree]->Char->[([(Int,Int,Char)],Int)]
+evaluate_tree_h_c7r7 [] player = []
+evaluate_tree_h_c7r7 (x:xs) player = (evaluate_tree_c7r7 x player):(evaluate_tree_h_c7r7 xs player)
+
 	
 --Helper Function to Generate Moves for White
 move_generator_wh_c7r7 :: [(Int,Int,Char)]->[(Int,Int,Char)]->[[(Int,Int,Char)]]

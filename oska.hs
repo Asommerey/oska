@@ -1,25 +1,11 @@
 -- Alex Somerey c7r7 72597099
 -- Ancelle Tache r3d8 35967116
---Sample Board Representation for n = 4
 
---[00][10][20][30]
---  [01][11][21]
---    [02][12]
---  [03][13][23]
---[04][14][24][34]
---
-
-wjtest = ["----","www","bb","---","----"]
-wjtest2 = ["----","www","bb","bbb","----"]
-wjtest3 = ["----","www","bb","b--","----"]
-wtest = ["----","---","ww","bbb","bbbb"]
-btest =["bbbb","---","--","---","----"]
-wnomove = ["----","--b","--","---","w---"]
-bnomove = ["---b","---","--","-w-","w---"]
+testjump = ["w---","b--","--","---","----"]
 
 -- Assumes that the player is the one who is moving
 oska_c7r7 :: [String]->Char->Int->[String]
-oska_c7r7 board player moves = reparse_c7r7 (fst (evaluate_start_c7r7 (make_move_tree_c7r7 (parse_c7r7 board) player moves) player))
+oska_c7r7 board player moves = reparse_c7r7 (snd (evaluate_start_c7r7 (make_move_tree_c7r7 (parse_c7r7 board) player moves) player))
 
 --Static Board Evaluator
 board_eval_c7r7 :: [(Int,Int,Char)]->Char->Int
@@ -27,18 +13,42 @@ board_eval_c7r7 board char
 	| ((victory_w_c7r7 board) && (victory_b_c7r7 board)) = tie_breaker_c7r7 board
 	| (victory_w_c7r7 board) = 1000
 	| (victory_b_c7r7 board) = (-1000) 
-	| char == 'w' = board_eval_wh_c7r7 board
-	| char == 'b' = board_eval_bh_c7r7 board
+	| otherwise = (div (board_eval_wh_c7r7 board) (num_white_c7r7 board)) 
+		    + (div (board_eval_bh_c7r7 board) (num_black_c7r7 board))
+
 
 --Helper Function to Evaluate for White
 board_eval_wh_c7r7 :: [(Int,Int,Char)]->Int
-board_eval_wh_c7r7 [] = 0
-board_eval_wh_c7r7 (x:xs)  = (board_eval_wh2_c7r7 x) + (board_eval_wh_c7r7 xs)
-	
-board_eval_wh2_c7r7 :: (Int,Int,Char)->Int
-board_eval_wh2_c7r7 (_,y,c)
-	| c == 'w' = (y+1)
+board_eval_wh_c7r7 (x:xs)
+	| (not (null xs)) = (board_eval_wh2_c7r7 x (last xs)) + (board_eval_wh_c7r7 xs)
 	| otherwise = 0
+
+board_eval_wh2_c7r7 :: (Int,Int,Char)->(Int,Int,Char)->Int
+board_eval_wh2_c7r7 (_,y,c) (_,numRows,_)
+	| c == 'w' = ((y+1)*numRows)
+	| otherwise = 0
+
+--Returns Number of White Pieces in the Board
+num_white_c7r7 :: [(Int,Int,Char)]->Int
+num_white_c7r7 [] = 0
+num_white_c7r7 (x:xs) = (num_white_h_c7r7 x) + (num_white_c7r7 xs)
+
+num_white_h_c7r7 :: (Int,Int,Char)->Int
+num_white_h_c7r7 (_,_,char)
+	| char == 'w' = 1
+	| otherwise = 0
+
+--Returns Number of White Pieces in the Board
+num_black_c7r7 :: [(Int,Int,Char)]->Int
+num_black_c7r7 [] = 0
+num_black_c7r7 (x:xs) = (num_black_h_c7r7 x) + (num_black_c7r7 xs)
+
+num_black_h_c7r7 :: (Int,Int,Char)->Int
+num_black_h_c7r7 (_,_,char)
+	| char == 'b' = 1
+	| otherwise = 0
+
+
 	
 --Helper Function to Evaluate for Black
 board_eval_bh_c7r7 :: [(Int,Int,Char)]->Int
@@ -49,7 +59,7 @@ board_eval_bh_c7r7 (x:xs)
 
 board_eval_bh2_c7r7 :: (Int,Int,Char)->(Int,Int,Char)->Int
 board_eval_bh2_c7r7 (_,y,c) (_,numRows,_)
-	| c == 'b' = (-1)*(numRows-y)
+	| c == 'b' = ((-1)*(numRows-y))
 	| otherwise = 0
 
 --Implemented Tie-Breaker, Returning +/- 1000 if there is a winner or 0 if it is a tie
@@ -134,39 +144,42 @@ move_tree_generator_c7r7 newstates player moves treearray
 	| otherwise		= move_tree_generator_c7r7 (tail newstates) player moves ((MoveTree (head newstates) deeperstates) : treearray)
 		where deeperstates = (move_tree_generator_c7r7 (move_generator_c7r7 (head newstates) (getopp_c7r7 player)) (getopp_c7r7 player) (moves-1) [])
 
+--Returns opposing player
 getopp_c7r7 :: Char -> Char
 getopp_c7r7 player
 	| player == 'w' ='b'
 	| otherwise 	= 'w'
 
-evaluate_start_c7r7 :: MoveTree->Char->([(Int,Int,Char)],Int)
+--Evaluates the Move Tree according to Minimax
+evaluate_start_c7r7 :: MoveTree->Char->(Int,[(Int,Int,Char)])
 evaluate_start_c7r7 tree player
 	| player == 'w' = maximum (evaluate_tree_h_c7r7 (moveTree tree) player)
 	| player == 'b' = minimum (evaluate_tree_h_c7r7 (moveTree tree) player)
 
-evaluate_tree_c7r7 :: MoveTree->Char->([(Int,Int,Char)],Int)
+evaluate_tree_c7r7 :: MoveTree->Char->(Int,[(Int,Int,Char)])
 evaluate_tree_c7r7 tree player
-	| (null (moveTree tree)) = ((state tree),(board_eval_c7r7 (state tree) player))
-	| (player == 'w') = ((state tree),(snd (maximum leaves)))
-	| (player == 'b') = ((state tree),(snd (minimum leaves)))
+	| (null (moveTree tree)) = ((board_eval_c7r7 (state tree) player),(state tree))
+	| (player == 'w') = ((fst (maximum leaves)),(state tree))
+	| (player == 'b') = ((fst (minimum leaves)),(state tree))
 	where leaves = evaluate_tree_h_c7r7 (moveTree tree) (getopp_c7r7 player)
 
-evaluate_tree_h_c7r7 :: [MoveTree]->Char->[([(Int,Int,Char)],Int)]
+evaluate_tree_h_c7r7 :: [MoveTree]->Char->[(Int,[(Int,Int,Char)])]
 evaluate_tree_h_c7r7 [] player = []
 evaluate_tree_h_c7r7 (x:xs) player = (evaluate_tree_c7r7 x player):(evaluate_tree_h_c7r7 xs player)
 
 --Move Generator
 move_generator_c7r7 :: [(Int,Int,Char)]->Char->[[(Int,Int,Char)]]
-move_generator_c7r7 board 'w' = move_generator_wh_c7r7 [] board 
-move_generator_c7r7 board 'b' = move_generator_bh_c7r7 board
+move_generator_c7r7 board 'w' 
+	| not (null (move_generator_wh_c7r7 [] board)) = move_generator_wh_c7r7 [] board
+	| otherwise = [board]
+move_generator_c7r7 board 'b' 
+	| not (null (move_generator_bh_c7r7 board)) = move_generator_bh_c7r7 board
+	| otherwise = [board]
 	
 --Helper Function to Generate Moves for White
 move_generator_wh_c7r7 :: [(Int,Int,Char)]->[(Int,Int,Char)]->[[(Int,Int,Char)]]
 move_generator_wh_c7r7 piecesBefore [] = []
-move_generator_wh_c7r7 piecesBefore (x:xs) 
-	| (null newMoves) && (not (null xs)) = [piecesBefore++(x:xs)]
-	| otherwise = newMoves
-		where newMoves = filter (not . null) 
+move_generator_wh_c7r7 piecesBefore (x:xs) = filter (not . null) 
 			(concat[
 			((generate_new_states_wr_c7r7 x piecesBefore xs):
 			(generate_new_states_wl_c7r7 x piecesBefore xs):[]),
@@ -179,13 +192,32 @@ generate_new_states_wr_c7r7 :: (Int,Int,Char)->
 				[(Int,Int,Char)]->
 				[(Int,Int,Char)]
 generate_new_states_wr_c7r7 (x,y,char) piecesBefore piecesAfter
-	| char == 'w' && (open_space_c7r7 x (y+1) (piecesBefore++piecesAfter))
+	| char == 'w' 
+	&& (open_space_c7r7 x (y+1) (piecesBefore++piecesAfter))
+	&& (valid_x_c7r7 x (y+1) (last piecesAfter))
+	&& (valid_y_c7r7 x (y+1) (last piecesAfter))
 	= piecesBefore++(x,(y+1),'w'):piecesAfter
-	| (char == 'w') && (not (open_space_c7r7 x (y+1) (piecesBefore++piecesAfter)))
+
+	| (char == 'w') 
+	&& (not (open_space_c7r7 x (y+1) (piecesBefore++piecesAfter)))
 	&& (jumpable_wr_c7r7 x (y+1) (piecesBefore++piecesAfter))
 	&& (open_space_c7r7 x (y+2) (piecesBefore++piecesAfter))
+	&& (not (before_middle_c7r7 y (piecesBefore++piecesAfter)))
+	&& (valid_x_c7r7 x (y+2) (last piecesAfter))
+	&& (valid_y_c7r7 x (y+2) (last piecesAfter))
 	= remove1_c7r7 (x,(y+1),'b') [] (piecesBefore++(x,(y+2),'w'):piecesAfter)
+
+	| (char == 'w') 
+	&& (not (open_space_c7r7 x (y+1) (piecesBefore++piecesAfter)))
+	&& (jumpable_wr_c7r7 x (y+1) (piecesBefore++piecesAfter))
+	&& (open_space_c7r7 (x+1) (y+2) (piecesBefore++piecesAfter))
+	&& (before_middle_c7r7 y (piecesBefore++piecesAfter))
+	&& (valid_x_c7r7 (x+1) (y+2) (last piecesAfter))
+	&& (valid_y_c7r7 (x+1) (y+2) (last piecesAfter))
+	= remove1_c7r7 (x,(y+1),'b') [] (piecesBefore++((x+1),(y+2),'w'):piecesAfter)
+
 	| otherwise = []
+
 
 --Generates New Jumps down and to the left for white pieces
 generate_new_states_wl_c7r7 :: (Int,Int,Char)->
@@ -194,12 +226,65 @@ generate_new_states_wl_c7r7 :: (Int,Int,Char)->
 				[(Int,Int,Char)]
 generate_new_states_wl_c7r7 (x,y,char) piecesBefore piecesAfter
 	| char == 'w' && (open_space_c7r7 (x-1) (y+1) (piecesBefore++piecesAfter))
-	&& (not (below_middle_c7r7 y piecesAfter))
+	&& (not (below_middle_c7r7 y piecesAfter)) && ((x-1)>=0)
+	&& (valid_y_c7r7 x (y+1) (last piecesAfter))
 	= piecesBefore++((x-1),(y+1),'w'):piecesAfter
+
 	| char == 'w' && (open_space_c7r7 (x+1) (y+1) (piecesBefore++piecesAfter))
 	&& (below_middle_c7r7 y piecesAfter) 
+	&& (valid_y_c7r7 x (y+1) (last piecesAfter))
 	= piecesBefore++((x+1),(y+1),'w'):piecesAfter
+
+	|(char == 'w') 
+	&& (not (open_space_c7r7 (x+1) (y+1) (piecesBefore++piecesAfter)))
+	&& (jumpable_wr_c7r7 (x+1) (y+1) (piecesBefore++piecesAfter))
+	&& (open_space_c7r7 (x+2) (y+2) (piecesBefore++piecesAfter))
+	&& (below_middle_c7r7 y (piecesBefore++piecesAfter))
+	&& (valid_x_c7r7 (x+2) (y+2) (last piecesAfter))
+	&& (valid_y_c7r7 (x+2) (y+2) (last piecesAfter))
+	= remove1_c7r7 ((x+1),(y+1),'b') [] (piecesBefore++((x+2),(y+2),'w'):piecesAfter)
+
+	| (char == 'w')
+	&& (not (open_space_c7r7 (x-1) (y+1) (piecesBefore++piecesAfter)))
+	&& (jumpable_wr_c7r7 (x-1) (y+1) (piecesBefore++piecesAfter))
+	&& (open_space_c7r7 (x-2) (y+2) (piecesBefore++piecesAfter))
+	&& (valid_x_c7r7 (x-2) (y+2) (last piecesAfter))
+	&& (valid_y_c7r7 (x-2) (y+2) (last piecesAfter))	
+	&& (not (before_middle_c7r7 y (piecesAfter)))
+	= remove1_c7r7 ((x-1),(y+1),'b') [] (piecesBefore++((x-2),(y+2),'w'):piecesAfter)
+
+	| (char == 'w')
+	&& (not (open_space_c7r7 (x-1) (y+1) (piecesBefore++piecesAfter)))
+	&& (jumpable_wr_c7r7 (x-1) (y+1) (piecesBefore++piecesAfter))
+	&& (open_space_c7r7 (x-1) (y+2) (piecesBefore++piecesAfter))
+	&& (valid_x_c7r7 (x-1) (y+2) (last piecesAfter))
+	&& (valid_y_c7r7 (x-1) (y+2) (last piecesAfter))	
+	&& (before_middle_c7r7 y (piecesAfter))
+	= remove1_c7r7 ((x-1),(y+1),'b') [] (piecesBefore++((x-1),(y+2),'w'):piecesAfter)
+
 	| otherwise = []
+
+valid_x_c7r7 :: Int->Int->(Int,Int,Char)->Bool
+valid_x_c7r7 newx newy (numPieces,numRows,_)
+	| newx < 0 = False
+	| ((newy)<=(div numRows 2)) && ((numPieces - newy) /= newx) = True
+	| ((newy)>(div numRows 2)) = True
+	| otherwise = False
+
+valid_y_c7r7 :: Int->Int->(Int,Int,Char)->Bool
+valid_y_c7r7 newx newy (numPieces,numRows,_)
+	| newy < 0 = False
+	| newy == numRows = False
+	| otherwise = True
+
+--Returns True if the row is 1 before the middle
+before_middle_c7r7 :: Int->[(Int,Int,Char)]->Bool
+before_middle_c7r7 y x = before_middle_h_c7r7 y (last x)
+
+before_middle_h_c7r7 :: Int->(Int,Int,Char)->Bool
+before_middle_h_c7r7 y (_,numRows,_) 
+	| (y == ((div numRows 2)-1)) = True
+	| otherwise = False
 
 --Returns True if the row is below the middle 
 --meaning expanding instead of contracting
@@ -208,8 +293,8 @@ below_middle_c7r7 y x = below_middle_h_c7r7 y (last x)
 
 below_middle_h_c7r7 :: Int->(Int,Int,Char)->Bool
 below_middle_h_c7r7 y (_,numRows,_) 
-	| y < (div numRows 2) = False
-	| otherwise = True
+	| (y >= (div numRows 2)) = True
+	| otherwise = False
 
 --Tests if a space can be jumped by a white piece
 jumpable_wr_c7r7 :: Int->Int->[(Int,Int,Char)]->Bool
@@ -235,7 +320,6 @@ open_space_c7r7 newx newy (x:xs)
 
 open_space_h_c7r7 :: Int->Int->(Int,Int,Char)->(Int,Int,Char)->Bool
 open_space_h_c7r7 newx newy (x,y,_) (_,numRows,_)
-	| (newx < 0) || (newy < 0) = False
 	| newy == numRows = False
 	| (newx == (row_size_c7r7 newy numRows)) = False
 	| (newx == x) && (newy == y) = False
@@ -250,10 +334,7 @@ row_size_c7r7 row numRows
 
 --Helper Function to Generate for Black
 move_generator_bh_c7r7 :: [(Int,Int,Char)]->[[(Int,Int,Char)]]
-move_generator_bh_c7r7 (x:xs)
-	| null newMoves = [(x:xs)]
-	| otherwise = newMoves
-		where newMoves = filter (not . null) (generate_new_states_bh_c7r7 [] x xs  (x:xs) [[]])
+move_generator_bh_c7r7 (x:xs) = filter (not . null) (generate_new_states_bh_c7r7 [] x xs  (x:xs) [[]])
 
 generate_new_states_bh_c7r7 :: [(Int,Int,Char)] ->(Int,Int,Char) -> [(Int,Int,Char)] ->[(Int,Int,Char)] -> [[(Int,Int,Char)]] -> [[(Int,Int,Char)]]
 generate_new_states_bh_c7r7 passed currentpiece rest board moves
